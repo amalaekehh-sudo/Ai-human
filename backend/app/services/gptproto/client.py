@@ -508,9 +508,17 @@ class GPTProtoClient:
             result = await self.get_music_task(task_id)
 
             if result.get("code") == "success" and result.get("data"):
+                # چک کردن اینکه data لیست است یا استرینگ
+                if isinstance(result["data"], str):
+                    # هنوز در حال processing
+                    logger.debug(f"Music task {task_id} still processing...")
+                    await asyncio.sleep(poll_interval)
+                    continue
+
                 task = result["data"][0]
 
-                if task["status"] == "completed":
+                # ⚠️ Fix: Suno returns "complete" not "completed"
+                if task["status"] in ["complete", "completed", "succeeded"]:
                     audio_url = task.get("audio_url")
                     if not audio_url:
                         raise Exception(f"No audio_url in result: {task}")
