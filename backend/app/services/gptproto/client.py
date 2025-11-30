@@ -111,6 +111,11 @@ class GPTProtoClient:
             error_data = response.json() if response.text else {}
             error_msg = error_data.get("error", {}).get("message", response.text)
 
+            # لاگ کامل خطا برای debug
+            logger.error(f"Response status: {response.status_code}")
+            logger.error(f"Response body: {response.text[:500]}")  # اولین 500 کاراکتر
+            logger.error(f"Error data: {error_data}")
+
             # Retry logic برای errorهای موقت
             if response.status_code in [429, 500, 503] and retry_count < self.max_retries:
                 wait_time = 2 ** retry_count  # Exponential backoff
