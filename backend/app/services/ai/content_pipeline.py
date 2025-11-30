@@ -132,12 +132,15 @@ class ContentPipeline:
         # ═══════════════════════════════════════════════════════
         logger.info("\n🖼️  Step 2/4: Generating image...")
 
-        image_prompt = f"""photorealistic portrait of a 28-year-old Persian man,
-Tehran tech influencer named Amir, modern casual style,
-wearing dark jacket, holding {product_name},
-warm cinematic lighting, professional studio feel,
-4:5 aspect ratio, high detail, sharp focus,
-realistic skin texture, background soft blur neutral tones"""
+        image_prompt = f"""photorealistic portrait of a tall, handsome 28-year-old Persian tech influencer named Amir,
+fair skin tone, medium-length stylish hair perfectly styled,
+wearing elegant white formal suit and tie, professional business attire,
+confidently holding {product_name} in hand,
+warm professional studio lighting, cinematic quality,
+4:5 aspect ratio for Instagram, ultra high detail, sharp focus,
+realistic skin texture and facial features, elegant sophisticated look,
+clean minimalist background with soft bokeh, neutral warm tones,
+premium executive style, corporate professional aesthetic"""
 
         image_data_raw = await self.gpt_client.generate_image(image_prompt)
 

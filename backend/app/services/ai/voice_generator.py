@@ -34,7 +34,7 @@ class VoiceGenerator:
     async def generate_voice(
         self,
         text: str,
-        accuracy: float = 0.8,
+        accuracy: float = 0.95,  # افزایش به 0.95 برای لحجه فارسی بهتر
         noise_reduction: bool = True,
         volume_normalization: bool = True,
         save_path: Optional[str] = None
@@ -44,7 +44,7 @@ class VoiceGenerator:
 
         Args:
             text: متن فارسی
-            accuracy: دقت voice clone (0.0-1.0)
+            accuracy: دقت voice clone (0.0-1.0) - بالاتر = شبیه‌تر به صدای اصلی
             noise_reduction: کاهش نویز
             volume_normalization: نرمال‌سازی صدا
             save_path: مسیر ذخیره (اختیاری)
@@ -120,7 +120,7 @@ class VoiceGenerator:
 
         audio_url = await self.generate_voice(
             text=script,
-            accuracy=0.8,  # دقت بالا
+            accuracy=0.95,  # دقت بسیار بالا برای لحجه فارسی طبیعی‌تر
             noise_reduction=True,
             volume_normalization=True,
             save_path=save_path
