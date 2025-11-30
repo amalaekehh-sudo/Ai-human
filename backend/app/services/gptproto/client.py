@@ -296,14 +296,21 @@ class GPTProtoClient:
         result = await self._request("POST", "/api/v3/minimax/voice-clone", data)
 
         # چک کردن error
-        if "error" in result:
-            raise Exception(f"Voice clone error: {result['error']['message']}")
+        if "error" in result and result.get("error"):
+            raise Exception(f"Voice clone error: {result['error']}")
 
         # برگرداندن task_id
-        task_id = result.get("id") or result.get("task_id") or result.get("prediction_id")
+        # GPTProto API structure: result['data']['id']
+        if "data" in result and isinstance(result["data"], dict):
+            task_id = result["data"].get("id")
+        else:
+            # Fallback برای format قدیمی
+            task_id = result.get("id") or result.get("task_id") or result.get("prediction_id")
+
         if not task_id:
             raise Exception(f"No task_id in response: {result}")
 
+        logger.info(f"Voice clone task created: {task_id}")
         return task_id
 
     async def get_voice_task(self, task_id: str) -> Dict[str, Any]:
@@ -358,19 +365,39 @@ class GPTProtoClient:
             # دریافت وضعیت
             result = await self.get_voice_task(task_id)
 
-            if result["status"] == "success":
-                audio_url = result["result"].get("audio_url")
+            # GPTProto structure: result['data'] or result directly
+            data = result.get("data", result)
+
+            status = data.get("status", "unknown")
+            logger.debug(f"Voice task {task_id} status: {status}")
+
+            # Check if completed (GPTProto uses "succeeded" status)
+            if status in ["success", "succeeded", "completed"]:
+                # audio_url می‌تونه در outputs یا result باشه
+                audio_url = None
+
+                # Check outputs array
+                if "outputs" in data and data["outputs"]:
+                    audio_url = data["outputs"][0] if isinstance(data["outputs"], list) else data["outputs"]
+
+                # Check result field
+                if not audio_url and "result" in data:
+                    result_data = data["result"]
+                    audio_url = result_data.get("audio_url") if isinstance(result_data, dict) else result_data
+
                 if not audio_url:
-                    raise Exception(f"No audio_url in result: {result}")
+                    raise Exception(f"No audio_url in completed task: {result}")
+
+                logger.info(f"Voice task {task_id} completed successfully")
                 return audio_url
 
-            elif result["status"] == "failed":
-                error_msg = result.get("error") or "Unknown error"
+            elif status in ["failed", "error"]:
+                error_msg = data.get("error") or result.get("error") or "Unknown error"
                 raise Exception(f"Voice task failed: {error_msg}")
 
             else:
-                # هنوز در حال processing
-                logger.debug(f"Voice task {task_id} status: {result['status']}... waiting")
+                # هنوز در حال processing (created, processing, running, etc.)
+                logger.debug(f"Voice task {task_id} still processing... waiting {poll_interval}s")
                 await asyncio.sleep(poll_interval)
 
     # ==================== Music Generation (Suno) ====================
