@@ -11,7 +11,14 @@
 import asyncio
 import os
 import json
+import sys
 from pathlib import Path
+
+# اضافه کردن backend به Python path
+project_root = Path(__file__).parent.parent.parent
+backend_path = project_root / "backend"
+sys.path.insert(0, str(backend_path))
+
 from app.services.ai.content_pipeline import ContentPipeline
 
 
