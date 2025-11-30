@@ -4,6 +4,7 @@ Voice Generator Service با MiniMax (GPTProto)
 تولید صدای فارسی با voice cloning
 """
 
+import time
 from typing import Optional
 from loguru import logger
 from pathlib import Path
@@ -18,17 +19,17 @@ class VoiceGenerator:
         self,
         client: GPTProtoClient,
         voice_sample_url: str,
-        custom_voice_id: str = "amir-voice-001"
+        custom_voice_id: Optional[str] = None
     ):
         """
         Args:
             client: GPTProto client
             voice_sample_url: URL فایل صوتی برای clone کردن
-            custom_voice_id: شناسه اختصاصی صدا (برای استفاده مجدد)
+            custom_voice_id: شناسه اختصاصی صدا (اختیاری - اگر None باشه، unique ID تولید می‌شه)
         """
         self.client = client
         self.voice_sample_url = voice_sample_url
-        self.custom_voice_id = custom_voice_id
+        self.custom_voice_id_prefix = custom_voice_id or "amir-voice"
 
     async def generate_voice(
         self,
@@ -53,15 +54,20 @@ class VoiceGenerator:
         """
         logger.info(f"Generating voice for text: {text[:50]}...")
 
+        # تولید unique voice ID برای جلوگیری از duplicate error
+        unique_voice_id = f"{self.custom_voice_id_prefix}-{int(time.time())}"
+
         # ارسال درخواست voice clone
         task_id = await self.client.voice_clone(
             text=text,
             audio_url=self.voice_sample_url,
-            custom_voice_id=self.custom_voice_id,
+            custom_voice_id=unique_voice_id,
             accuracy=accuracy,
             noise_reduction=noise_reduction,
             volume_normalization=volume_normalization
         )
+
+        logger.debug(f"Using voice ID: {unique_voice_id}")
 
         logger.info(f"Voice task submitted: {task_id}")
 
