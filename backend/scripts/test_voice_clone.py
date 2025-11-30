@@ -44,9 +44,9 @@ async def test_voice_clone():
                 print("   git commit -m 'Add Amir voice sample'")
                 print("   git push")
                 print("\nسپس یکی از این URLها رو استفاده کن:")
-                print("   export VOICE_SAMPLE_URL='https://raw.githubusercontent.com/amalaekehh-sudo/Ai-human/main/assets/voice/amir_voice.m4a'")
+                print("   export VOICE_SAMPLE_URL='https://tmpfiles.org/dl/12674832/amir_voice_sample.m4a'")
                 print("   یا:")
-                print("   export VOICE_SAMPLE_URL='https://raw.githubusercontent.com/amalaekehh-sudo/Ai-human/claude/review-amir-project-016rACWzFaraUxfkHFNLgViX/assets/voice/amir_voice.m4a'")
+                print("   export VOICE_SAMPLE_URL='https://tmpfiles.org/dl/12674832/amir_voice_sample.m4a'")
                 return None
             else:
                 print(f"\n❌ فایل صوتی پیدا نشد: {local_voice_file}")
