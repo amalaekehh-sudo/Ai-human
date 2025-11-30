@@ -103,13 +103,28 @@ class GPTProtoClient:
 
             # چک کردن status code
             if response.status_code == 200:
-                result = response.json()
-                logger.debug(f"Response: {result}")
-                return result
+                # چک کردن اینکه response خالی نباشه
+                if not response.text:
+                    raise Exception(f"Empty response from {endpoint}")
+
+                try:
+                    result = response.json()
+                    logger.debug(f"Response: {result}")
+                    return result
+                except ValueError as e:
+                    logger.error(f"Failed to parse JSON response from {endpoint}")
+                    logger.error(f"Response text: {response.text[:500]}")
+                    raise Exception(f"Invalid JSON response from {endpoint}: {e}")
 
             # Error handling
-            error_data = response.json() if response.text else {}
-            error_msg = error_data.get("error", {}).get("message", response.text)
+            error_data = {}
+            if response.text:
+                try:
+                    error_data = response.json()
+                except ValueError:
+                    logger.warning(f"Could not parse error response as JSON: {response.text[:200]}")
+
+            error_msg = error_data.get("error", {}).get("message", response.text) if isinstance(error_data.get("error"), dict) else response.text
 
             # لاگ کامل خطا برای debug
             logger.error(f"Response status: {response.status_code}")
