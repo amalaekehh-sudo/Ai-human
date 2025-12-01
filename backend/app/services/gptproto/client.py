@@ -604,7 +604,7 @@ class GPTProtoClient:
         self,
         image_url: str,
         audio_url: str,
-        model: str = "kling",  # kling, sora-2, or grok
+        model: str = "veo",  # veo, kling, sora-2, or grok
         aspect_ratio: str = "9:16"  # Instagram Reels format
     ) -> str:
         """
@@ -613,7 +613,7 @@ class GPTProtoClient:
         Args:
             image_url: URL تصویر (چهره امیر)
             audio_url: URL صدا (voice cloning)
-            model: مدل video generation (kling, sora-2, grok)
+            model: مدل video generation (veo, kling, sora-2, grok)
             aspect_ratio: نسبت ابعاد (9:16 برای Reels، 16:9 برای landscape)
 
         Returns:
@@ -634,7 +634,21 @@ class GPTProtoClient:
         logger.info(f"  Audio (will merge later): {audio_url}")
 
         # Choose endpoint based on model
-        if model == "kling":
+        if model == "veo" or model == "veo3.1-pro":
+            # ✅ Veo 3.1 Pro endpoint - Gemini's video generation
+            # Endpoint: /v1/veo/videos
+            # Simpler format, might have better access!
+            data = {
+                "prompt": prompt,
+                "model": "veo3.1-pro",
+                "upsample": True,  # Better quality
+                "reference": False,
+                "aspect_ratio": aspect_ratio,  # 9:16 for Reels
+                "images": [image_url]  # Can accept multiple images
+            }
+            endpoint = "/v1/veo/videos"
+
+        elif model == "kling":
             # ✅ Kling v2.1 I2V Pro endpoint from GPTProto docs
             # Endpoint: /api/v3/kwaivgi/kling-v2.1-i2v-pro
             # Note: This doesn't support audio/lip-sync directly!

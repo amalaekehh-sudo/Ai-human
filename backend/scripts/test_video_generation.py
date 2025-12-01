@@ -53,11 +53,11 @@ async def test_video_generation():
         print("   این ممکنه چند دقیقه طول بکشه...")
 
         # تولید ویدیو (برمی‌گردونه task_id)
-        # امتحان Grok (ممکنه در دسترس‌تر باشه)
+        # امتحان Veo 3.1 Pro - Gemini's video generation!
         task_id = await client.generate_video_from_image_audio(
             image_url=image_url,
             audio_url=audio_url,
-            model="grok",  # یا "kling" یا "sora-2"
+            model="veo",  # یا "kling", "sora-2", "grok"
             aspect_ratio="9:16"
         )
 
