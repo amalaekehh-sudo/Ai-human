@@ -554,18 +554,30 @@ class GPTProtoClient:
             # دریافت وضعیت
             result = await self.get_music_task(task_id)
 
-            if result.get("code") == "success" and result.get("data"):
-                # چک کردن اینکه data لیست است یا استرینگ
-                if isinstance(result["data"], str):
-                    # هنوز در حال processing
-                    logger.debug(f"Music task {task_id} still processing...")
-                    await asyncio.sleep(poll_interval)
-                    continue
+            # ✅ Fix: باید status رو چک کنیم نه code
+            # Response format: {"status": "SUCCESS", "data": [...]} یا {"status": "IN_PROGRESS", "data": "task is running！"}
+            data = result.get("data")
+            status = result.get("status")
 
-                task = result["data"][0]
+            if not data:
+                # اگه data خالی بود، یعنی هنوز آماده نیست
+                logger.debug(f"Music task {task_id} not ready yet (no data)... waiting")
+                await asyncio.sleep(poll_interval)
+                continue
+
+            # چک کردن اینکه data لیست است یا استرینگ
+            if isinstance(data, str):
+                # هنوز در حال processing - Response: {"data": "task is running！", "status": "IN_PROGRESS"}
+                logger.debug(f"Music task {task_id} still processing (status: {status})...")
+                await asyncio.sleep(poll_interval)
+                continue
+
+            # اگه data لیست شد، یعنی تمام شده - Response: {"data": [{...}], "status": "SUCCESS"}
+            if isinstance(data, list) and len(data) > 0:
+                task = data[0]
 
                 # ⚠️ Fix: Suno returns "complete" not "completed"
-                if task["status"] in ["complete", "completed", "succeeded"]:
+                if task.get("status") in ["complete", "completed", "succeeded"]:
                     audio_url = task.get("audio_url")
                     if not audio_url:
                         raise Exception(f"No audio_url in result: {task}")
@@ -573,17 +585,17 @@ class GPTProtoClient:
                     logger.info(f"Music ready! Duration: {task.get('duration')}s, Title: {task.get('title')}")
                     return audio_url
 
-                elif task["status"] == "failed":
+                elif task.get("status") == "failed":
                     error_msg = task.get("error_message", "Unknown error")
                     raise Exception(f"Music task failed: {error_msg}")
 
                 else:
                     # processing
-                    logger.debug(f"Music task {task_id} status: {task['status']}... waiting")
+                    logger.debug(f"Music task {task_id} status: {task.get('status')}... waiting")
                     await asyncio.sleep(poll_interval)
             else:
-                # اگه data خالی بود، یعنی هنوز آماده نیست
-                logger.debug(f"Music task {task_id} not ready yet... waiting")
+                # اگه data فرمت ناشناخته داشت
+                logger.debug(f"Music task {task_id} unknown data format: {type(data)}... waiting")
                 await asyncio.sleep(poll_interval)
 
 
