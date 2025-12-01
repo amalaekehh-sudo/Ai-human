@@ -598,6 +598,142 @@ class GPTProtoClient:
                 logger.debug(f"Music task {task_id} unknown data format: {type(data)}... waiting")
                 await asyncio.sleep(poll_interval)
 
+    # ==================== VIDEO GENERATION ====================
+
+    async def generate_video_from_image_audio(
+        self,
+        image_url: str,
+        audio_url: str,
+        model: str = "sora-2-pro",  # یا "veo-3.1-pro"
+        duration: Optional[int] = None
+    ) -> str:
+        """
+        تولید ویدیوی talking head از image + audio با lip-sync
+
+        Args:
+            image_url: URL تصویر (چهره امیر)
+            audio_url: URL صدا (voice cloning)
+            model: مدل video generation (sora-2-pro یا veo-3.1-pro)
+            duration: طول ویدیو (seconds) - optional
+
+        Returns:
+            task_id برای polling
+
+        Example:
+            >>> client = GPTProtoClient("sk-xxx")
+            >>> task_id = await client.generate_video_from_image_audio(
+            ...     image_url="https://...",
+            ...     audio_url="https://..."
+            ... )
+            >>> video_url = await client.wait_for_video(task_id)
+        """
+        data = {
+            "model": model,
+            "image": image_url,
+            "audio": audio_url,
+        }
+
+        if duration:
+            data["duration"] = duration
+
+        # ⚠️ نکته: endpoint دقیق باید از documentation GPTProto چک بشه
+        # احتمالاً /v1/video/generate یا /api/v3/sora/generate
+        result = await self._request("POST", "/v1/video/generate", data)
+
+        # استخراج task_id
+        if "data" in result and isinstance(result["data"], dict):
+            task_id = result["data"].get("id") or result["data"].get("task_id")
+        else:
+            task_id = result.get("id") or result.get("task_id") or result.get("data")
+
+        if not task_id:
+            raise Exception(f"No task_id in video generation response: {result}")
+
+        logger.info(f"Video generation task created: {task_id}")
+        return task_id
+
+    async def get_video_task(self, task_id: str) -> Dict[str, Any]:
+        """
+        چک کردن وضعیت video generation task
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            وضعیت task
+        """
+        result = await self._request(
+            "GET",
+            f"/v1/video/fetch/{task_id}",
+            use_bearer=True
+        )
+        return result
+
+    async def wait_for_video(
+        self,
+        task_id: str,
+        max_wait: int = 600,  # 10 minutes (video takes longer)
+        poll_interval: int = 10
+    ) -> str:
+        """
+        صبر کردن تا video task تمام بشه
+
+        Args:
+            task_id: Task ID
+            max_wait: حداکثر زمان انتظار (seconds)
+            poll_interval: فاصله بین polls (seconds)
+
+        Returns:
+            Video URL
+
+        Raises:
+            Exception: اگر fail کنه یا timeout بشه
+        """
+        start_time = time.time()
+
+        while True:
+            if time.time() - start_time > max_wait:
+                raise Exception(f"Video task timeout after {max_wait}s")
+
+            result = await self.get_video_task(task_id)
+
+            data = result.get("data")
+            status = result.get("status")
+
+            if not data:
+                logger.debug(f"Video task {task_id} not ready yet (no data)...")
+                await asyncio.sleep(poll_interval)
+                continue
+
+            # چک string response (processing)
+            if isinstance(data, str):
+                logger.debug(f"Video task {task_id} still processing (status: {status})...")
+                await asyncio.sleep(poll_interval)
+                continue
+
+            # چک list response (completed)
+            if isinstance(data, list) and len(data) > 0:
+                task = data[0]
+
+                if task.get("status") in ["complete", "completed", "succeeded"]:
+                    video_url = task.get("video_url") or task.get("url")
+                    if not video_url:
+                        raise Exception(f"No video_url in result: {task}")
+
+                    logger.info(f"Video ready! Duration: {task.get('duration')}s")
+                    return video_url
+
+                elif task.get("status") == "failed":
+                    error_msg = task.get("error_message", "Unknown error")
+                    raise Exception(f"Video task failed: {error_msg}")
+
+                else:
+                    logger.debug(f"Video task {task_id} status: {task.get('status')}...")
+                    await asyncio.sleep(poll_interval)
+            else:
+                logger.debug(f"Video task {task_id} unknown format...")
+                await asyncio.sleep(poll_interval)
+
 
 # ==================== Helper Functions ====================
 
