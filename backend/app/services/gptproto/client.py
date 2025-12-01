@@ -604,7 +604,7 @@ class GPTProtoClient:
         self,
         image_url: str,
         audio_url: str,
-        model: str = "sora-2",  # یا "veo-3.1-pro"
+        model: str = "kling",  # kling, sora-2, or grok
         aspect_ratio: str = "9:16"  # Instagram Reels format
     ) -> str:
         """
@@ -613,11 +613,11 @@ class GPTProtoClient:
         Args:
             image_url: URL تصویر (چهره امیر)
             audio_url: URL صدا (voice cloning)
-            model: مدل video generation (sora-2 یا veo-3.1-pro)
+            model: مدل video generation (kling, sora-2, grok)
             aspect_ratio: نسبت ابعاد (9:16 برای Reels، 16:9 برای landscape)
 
         Returns:
-            Video URL یا task info
+            task_id برای پیگیری
 
         Example:
             >>> client = GPTProtoClient("sk-xxx")
@@ -626,31 +626,49 @@ class GPTProtoClient:
             ...     audio_url="https://..."
             ... )
         """
-        # ✅ Sora-2 Image-to-Video endpoint from GPTProto docs
-        # Endpoint: /api/v3/openai/sora-2/image-to-video
-        # Note: This doesn't support audio/lip-sync directly!
-        # Audio will need to be merged separately using FFmpeg
-
         # Prompt for natural speaking animation
         prompt = "The person speaks naturally with subtle facial expressions, slight head movements, and professional body language. Smooth and realistic animation with natural breathing and micro-expressions."
 
-        data = {
-            "prompt": prompt,
-            "image": image_url,
-            "duration": 8  # 4, 8, or 12 seconds available
-        }
-
-        logger.info(f"Generating video from image with Sora-2...")
+        logger.info(f"Generating video from image with {model}...")
         logger.info(f"  Image: {image_url}")
         logger.info(f"  Audio (will merge later): {audio_url}")
 
-        # Use correct Sora-2 image-to-video endpoint
-        result = await self._request(
-            "POST",
-            "/api/v3/openai/sora-2/image-to-video",
-            data
-        )
+        # Choose endpoint based on model
+        if model == "kling":
+            # ✅ Kling v2.1 I2V Pro endpoint from GPTProto docs
+            # Endpoint: /api/v3/kwaivgi/kling-v2.1-i2v-pro
+            # Note: This doesn't support audio/lip-sync directly!
+            data = {
+                "prompt": prompt,
+                "image": image_url,
+                "guidance_scale": 100,  # 0-200, default 100
+                "duration": 5  # 5 or 10 seconds
+            }
+            endpoint = "/api/v3/kwaivgi/kling-v2.1-i2v-pro"
 
+        elif model == "sora-2":
+            # Sora-2 Image-to-Video endpoint
+            data = {
+                "prompt": prompt,
+                "image": image_url,
+                "duration": 8  # 4, 8, or 12 seconds available
+            }
+            endpoint = "/api/v3/openai/sora-2/image-to-video"
+
+        elif model == "grok":
+            # Grok Imagine 0.9 endpoint
+            data = {
+                "prompt": prompt,
+                "image": image_url,
+                "size": "portrait"  # portrait for 9:16
+            }
+            endpoint = "/api/v3/grok/grok-imagine-0.9/image-to-video"
+
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
+        # Make request
+        result = await self._request("POST", endpoint, data)
         logger.debug(f"Video generation response: {result}")
 
         # Response format: {"status": "success", "task_id": "3cafe854..."}
