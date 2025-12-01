@@ -604,8 +604,8 @@ class GPTProtoClient:
         self,
         image_url: str,
         audio_url: str,
-        model: str = "sora-2-pro",  # یا "veo-3.1-pro"
-        duration: Optional[int] = None
+        model: str = "sora-2",  # یا "veo-3.1-pro"
+        aspect_ratio: str = "9:16"  # Instagram Reels format
     ) -> str:
         """
         تولید ویدیوی talking head از image + audio با lip-sync
@@ -613,44 +613,46 @@ class GPTProtoClient:
         Args:
             image_url: URL تصویر (چهره امیر)
             audio_url: URL صدا (voice cloning)
-            model: مدل video generation (sora-2-pro یا veo-3.1-pro)
-            duration: طول ویدیو (seconds) - optional
+            model: مدل video generation (sora-2 یا veo-3.1-pro)
+            aspect_ratio: نسبت ابعاد (9:16 برای Reels، 16:9 برای landscape)
 
         Returns:
-            task_id برای polling
+            Video URL یا task info
 
         Example:
             >>> client = GPTProtoClient("sk-xxx")
-            >>> task_id = await client.generate_video_from_image_audio(
+            >>> result = await client.generate_video_from_image_audio(
             ...     image_url="https://...",
             ...     audio_url="https://..."
             ... )
-            >>> video_url = await client.wait_for_video(task_id)
         """
+        # ✅ GPTProto uses /v1/chat/completions for video too!
+        # Format: image-to-video with audio for lip-sync
+        prompt = f"Generate a talking head video with lip-sync. Use image: {image_url}, and audio: {audio_url}. Make the person in the image speak with synchronized lip movements matching the audio. Aspect ratio: {aspect_ratio}"
+
         data = {
             "model": model,
-            "image": image_url,
-            "audio": audio_url,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "stream": False
         }
 
-        if duration:
-            data["duration"] = duration
+        logger.info(f"Generating video with {model}...")
+        result = await self._request("POST", "/v1/chat/completions", data)
 
-        # ⚠️ نکته: endpoint دقیق باید از documentation GPTProto چک بشه
-        # احتمالاً /v1/video/generate یا /api/v3/sora/generate
-        result = await self._request("POST", "/v1/video/generate", data)
+        logger.debug(f"Video generation response: {result}")
 
-        # استخراج task_id
-        if "data" in result and isinstance(result["data"], dict):
-            task_id = result["data"].get("id") or result["data"].get("task_id")
-        else:
-            task_id = result.get("id") or result.get("task_id") or result.get("data")
+        # استخراج video URL یا task ID از response
+        if "choices" in result and len(result["choices"]) > 0:
+            content = result["choices"][0]["message"]["content"]
+            logger.info(f"Video generation result: {content}")
+            return content
 
-        if not task_id:
-            raise Exception(f"No task_id in video generation response: {result}")
-
-        logger.info(f"Video generation task created: {task_id}")
-        return task_id
+        raise Exception(f"No video result in response: {result}")
 
     async def get_video_task(self, task_id: str) -> Dict[str, Any]:
         """
