@@ -626,33 +626,40 @@ class GPTProtoClient:
             ...     audio_url="https://..."
             ... )
         """
-        # ✅ GPTProto uses /v1/chat/completions for video too!
-        # Format: image-to-video with audio for lip-sync
-        prompt = f"Generate a talking head video with lip-sync. Use image: {image_url}, and audio: {audio_url}. Make the person in the image speak with synchronized lip movements matching the audio. Aspect ratio: {aspect_ratio}"
+        # ✅ Sora-2 Image-to-Video endpoint from GPTProto docs
+        # Endpoint: /api/v3/openai/sora-2/image-to-video
+        # Note: This doesn't support audio/lip-sync directly!
+        # Audio will need to be merged separately using FFmpeg
+
+        # Prompt for natural speaking animation
+        prompt = "The person speaks naturally with subtle facial expressions, slight head movements, and professional body language. Smooth and realistic animation with natural breathing and micro-expressions."
 
         data = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "stream": False
+            "prompt": prompt,
+            "image": image_url,
+            "duration": 8  # 4, 8, or 12 seconds available
         }
 
-        logger.info(f"Generating video with {model}...")
-        result = await self._request("POST", "/v1/chat/completions", data)
+        logger.info(f"Generating video from image with Sora-2...")
+        logger.info(f"  Image: {image_url}")
+        logger.info(f"  Audio (will merge later): {audio_url}")
+
+        # Use correct Sora-2 image-to-video endpoint
+        result = await self._request(
+            "POST",
+            "/api/v3/openai/sora-2/image-to-video",
+            data
+        )
 
         logger.debug(f"Video generation response: {result}")
 
-        # استخراج video URL یا task ID از response
-        if "choices" in result and len(result["choices"]) > 0:
-            content = result["choices"][0]["message"]["content"]
-            logger.info(f"Video generation result: {content}")
-            return content
+        # Response format: {"status": "success", "task_id": "3cafe854..."}
+        if "task_id" in result:
+            task_id = result["task_id"]
+            logger.info(f"Video task created: {task_id}")
+            return task_id
 
-        raise Exception(f"No video result in response: {result}")
+        raise Exception(f"No task_id in response: {result}")
 
     async def get_video_task(self, task_id: str) -> Dict[str, Any]:
         """
@@ -664,9 +671,11 @@ class GPTProtoClient:
         Returns:
             وضعیت task
         """
+        # Endpoint pattern similar to Suno
+        # Try: /api/v3/openai/sora-2/fetch/{task_id}
         result = await self._request(
             "GET",
-            f"/v1/video/fetch/{task_id}",
+            f"/api/v3/openai/sora-2/fetch/{task_id}",
             use_bearer=True
         )
         return result

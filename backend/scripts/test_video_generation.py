@@ -52,24 +52,19 @@ async def test_video_generation():
         print("\n🎬 شروع Video Generation...")
         print("   این ممکنه چند دقیقه طول بکشه...")
 
-        # تولید ویدیو (ممکنه مستقیم URL بده یا task ID)
-        result = await client.generate_video_from_image_audio(
+        # تولید ویدیو (برمی‌گردونه task_id)
+        task_id = await client.generate_video_from_image_audio(
             image_url=image_url,
             audio_url=audio_url,
-            model="sora-2",  # یا "veo-3.1-pro"
+            model="sora-2",
             aspect_ratio="9:16"
         )
 
-        print(f"\n✅ Video generation response:")
-        print(f"   {result}")
+        print(f"\n✅ Video task created: {task_id}")
+        print("   در حال تولید ویدیو... (ممکنه 3-5 دقیقه طول بکشه)")
 
-        # اگر URL مستقیم برگشت
-        if result.startswith("http"):
-            video_url = result
-        else:
-            # اگر task ID برگشت، باید poll کنیم
-            print("   Response is not a direct URL, might be task ID or instructions")
-            video_url = result
+        # صبر برای نتیجه
+        video_url = await client.wait_for_video(task_id, max_wait=600)
 
         print("\n" + "="*60)
         print("🎉 Video Generation موفق بود!")
