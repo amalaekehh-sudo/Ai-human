@@ -132,15 +132,21 @@ class ContentPipeline:
         # ═══════════════════════════════════════════════════════
         logger.info("\n🖼️  Step 2/4: Generating image...")
 
-        image_prompt = f"""photorealistic portrait of a tall, handsome 28-year-old Persian tech influencer named Amir,
-fair skin tone, medium-length stylish hair perfectly styled,
-wearing elegant white formal suit and tie, professional business attire,
-confidently holding {product_name} in hand,
-warm professional studio lighting, cinematic quality,
-4:5 aspect ratio for Instagram, ultra high detail, sharp focus,
-realistic skin texture and facial features, elegant sophisticated look,
-clean minimalist background with soft bokeh, neutral warm tones,
-premium executive style, corporate professional aesthetic"""
+        # ✨ تصویر با چهره ایرانی مدلینگ - NOT South Asian
+        image_prompt = f"""photorealistic portrait of tall handsome 28-year-old Iranian male model and tech influencer named Amir,
+IMPORTANT: distinctly Iranian/Persian facial features, Western Asian ethnicity, NOT South Asian or Pakistani appearance,
+Mediterranean complexion with lighter skin tone typical of Iranian models,
+sharp refined facial structure characteristic of Iranian male models,
+medium-length stylish modern hair perfectly groomed,
+wearing elegant white formal suit and tie, luxury business attire,
+confidently holding {product_name} in hand with professional pose,
+premium studio lighting with soft key light, cinematic depth,
+high-end fashion photography quality, editorial style,
+4:5 aspect ratio for Instagram, ultra high detail 8K, tack sharp focus,
+realistic skin texture, defined cheekbones, strong jawline,
+sophisticated elegant expression, confident executive presence,
+clean minimalist background with professional bokeh, warm neutral tones,
+luxury brand aesthetic, corporate leadership style, GQ magazine quality"""
 
         image_data_raw = await self.gpt_client.generate_image(image_prompt)
 
